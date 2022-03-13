@@ -8,21 +8,35 @@ import CampsiteInfo from "./CampsiteInfoComponent";
 import Constants from "expo-constants";
 import Favorites from "./FavoritesComponent";
 import Login from "./LoginComponent";
-import { View, Platform, StyleSheet, Text, ScrollView, Image, } from "react-native";
+import {
+  View,
+  Platform,
+  StyleSheet,
+  Text,
+  ScrollView,
+  Image,
+  Alert,
+  ToastAndroid,
+} from "react-native";
 import { createStackNavigator } from "react-navigation-stack";
 import { createDrawerNavigator, DrawerItems } from "react-navigation-drawer";
 import { createAppContainer } from "react-navigation";
 import { Icon } from "react-native-elements";
 import SafeAreaView from "react-native-safe-area-view";
-import { connect } from 'react-redux';
-import { fetchCampsites, fetchComments, fetchPromotions, fetchPartners } from '../redux/ActionCreators';
-
+import { connect } from "react-redux";
+import {
+  fetchCampsites,
+  fetchComments,
+  fetchPromotions,
+  fetchPartners,
+} from "../redux/ActionCreators";
+import NetInfo from "@react-native-community/netinfo";
 
 const mapDispatchToProps = {
   fetchCampsites,
   fetchComments,
   fetchPromotions,
-  fetchPartners
+  fetchPartners,
 };
 
 const DirectoryNavigator = createStackNavigator(
@@ -206,7 +220,6 @@ const LoginNavigator = createStackNavigator(
   }
 );
 
-
 const CustomDrawerContentComponent = (props) => (
   <ScrollView>
     <SafeAreaView
@@ -235,7 +248,12 @@ const MainNavigator = createDrawerNavigator(
       screen: LoginNavigator,
       navigationOptions: {
         drawerIcon: ({ tintColor }) => (
-          <Icon name="sign-in" type="font-awesome" size={24} color={tintColor} />
+          <Icon
+            name="sign-in"
+            type="font-awesome"
+            size={24}
+            color={tintColor}
+          />
         ),
       },
     },
@@ -258,7 +276,7 @@ const MainNavigator = createDrawerNavigator(
     Reservation: {
       screen: ReservationNavigator,
       navigationOptions: {
-        drawerLabel: 'Reserve Campsite',
+        drawerLabel: "Reserve Campsite",
         drawerIcon: ({ tintColor }) => (
           <Icon name="tree" type="font-awesome" size={24} color={tintColor} />
         ),
@@ -268,7 +286,7 @@ const MainNavigator = createDrawerNavigator(
     Favorites: {
       screen: FavoritesNavigator,
       navigationOptions: {
-        drawerLabel: 'My Favorites',
+        drawerLabel: "My Favorites",
         drawerIcon: ({ tintColor }) => (
           <Icon name="heart" type="font-awesome" size={24} color={tintColor} />
         ),
@@ -305,7 +323,7 @@ const MainNavigator = createDrawerNavigator(
     },
   },
   {
-    initialRouteName: 'Home',
+    initialRouteName: "Home",
     drawerBackgroundColor: "#CEC8FF",
     contentComponent: CustomDrawerContentComponent,
   }
@@ -314,12 +332,44 @@ const MainNavigator = createDrawerNavigator(
 const AppNavigator = createAppContainer(MainNavigator);
 
 class Main extends Component {
-
   componentDidMount() {
-      this.props.fetchCampsites();
-      this.props.fetchComments();
-      this.props.fetchPromotions();
-      this.props.fetchPartners();
+    this.props.fetchCampsites();
+    this.props.fetchComments();
+    this.props.fetchPromotions();
+    this.props.fetchPartners();
+
+    NetInfo.fetch().then((connectionInfo) => {
+      Platform.OS === "ios"
+        ? Alert.alert("Initial Network Connectivity Type:", connectionInfo.type)
+        : ToastAndroid.show("Initial Network Connectivity Type: " + connectionInfo.type, ToastAndroid.LONG);
+    });
+
+    this.unsubscribeNetInfo = NetInfo.addEventListener(connectionInfo => {
+      this.handleConnectivityChange(connectionInfo)
+    })
+  }
+
+  componentWillUnmount() {
+    this.unsubscribeNetInfo();
+  }
+
+  handleConnectivityChange = connectionInfo => {
+    let connectionMsg = 'You are now connected to an active network.';
+    switch(connectionInfo.type) {
+      case 'none':
+        connectionMsg = 'No network connection is active.';
+        break;
+        case 'unknown':
+          connectionMsg = 'The network connection state is now unknown.';
+          break;
+        case 'cellular':
+          connectionMsg = 'You are now connected to a cellular network.';
+          break;
+        case 'wifi':
+          connectionMsg = 'You are now connected to a WiFi network.';
+          break;
+    }
+    (Platform.OS === 'ios') ? Alert.alert('Connection change:', connectionMsg) : ToastAndroid.show(connectionMsg, ToastAndroid.LONG);
   }
 
   render() {
